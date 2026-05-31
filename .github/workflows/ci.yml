@@ -1,0 +1,77 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    name: Frontend (Lint + Type Check + Build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci --workspace=@agentcut/frontend --workspace=@agentcut/shared-types
+        working-directory: .
+      - run: npm run type-check
+      - run: npm run lint
+      - run: npm run build
+
+  backend:
+    name: Backend (Lint + Type Check + Test)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/ai-backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -e ".[dev]"
+      - run: ruff check .
+      - run: ruff format --check .
+      - run: mypy app --ignore-missing-imports
+      - run: pytest --tb=short -q
+        env:
+          BACKEND_SECRET_KEY: test-secret-key-minimum-32-chars-long
+          NEXT_PUBLIC_SUPABASE_URL: https://test.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: test-anon-key
+          SUPABASE_SERVICE_ROLE_KEY: test-service-role
+          SUPABASE_JWT_SECRET: test-jwt-secret
+          DATABASE_URL: postgresql://test:test@localhost:5432/test
+          ANTHROPIC_API_KEY: test-anthropic-key
+          GROQ_API_KEY: test-groq-key
+          AWS_ACCESS_KEY_ID: test-aws-key
+          AWS_SECRET_ACCESS_KEY: test-aws-secret
+          R2_BUCKET_NAME: test-bucket
+          R2_ENDPOINT_URL: https://test.r2.cloudflarestorage.com
+          R2_PUBLIC_URL: https://test.r2.dev
+          INNGEST_EVENT_KEY: test-inngest-key
+          INNGEST_SIGNING_KEY: test-inngest-signing
+
+  shared-types:
+    name: Shared Types (Build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run type-check --workspace=@agentcut/shared-types
+      - run: npm run build --workspace=@agentcut/shared-types

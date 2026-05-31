@@ -1,0 +1,154 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "agentcut-ai-backend"
+version = "0.1.0"
+description = "AgentCut AI — Multi-agent video editing pipeline (FastAPI + LangGraph)"
+requires-python = ">=3.11"
+license = { text = "Proprietary" }
+authors = [{ name = "AgentCut AI" }]
+
+dependencies = [
+    # ----- Web Framework -----
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "python-multipart>=0.0.18",
+    "httpx>=0.28.0",
+    "websockets>=13.1",
+    "starlette>=0.41.0",
+
+    # ----- Pydantic / Settings -----
+    "pydantic>=2.10.0",
+    "pydantic-settings>=2.7.0",
+
+    # ----- LangChain / LangGraph -----
+    "langchain>=0.3.12",
+    "langchain-core>=0.3.26",
+    "langchain-community>=0.3.12",
+    "langgraph>=0.2.56",
+    "langsmith>=0.2.3",
+    "langchain-anthropic>=0.3.1",
+    "langchain-groq>=0.2.1",
+
+    # ----- AI Providers -----
+    "anthropic>=0.40.0",
+    "groq>=0.13.0",
+    "openai>=1.57.0",
+
+    # ----- Video / Audio Processing -----
+    "ffmpeg-python>=0.2.0",
+    "yt-dlp>=2024.12.13",
+    "librosa>=0.10.2",
+
+    # ----- Computer Vision -----
+    "mediapipe>=0.10.18",
+    "opencv-python-headless>=4.10.0",
+    "Pillow>=11.0.0",
+
+    # ----- AWS / Storage -----
+    "boto3>=1.35.88",
+    "botocore>=1.35.88",
+
+    # ----- Database -----
+    "supabase>=2.10.0",
+    "asyncpg>=0.30.0",
+    "sqlalchemy[asyncio]>=2.0.36",
+
+    # ----- Background Jobs -----
+    "inngest>=0.4.0",
+
+    # ----- Observability -----
+    "sentry-sdk[fastapi]>=2.19.2",
+    "posthog>=3.7.4",
+
+    # ----- Utilities -----
+    "python-jose[cryptography]>=3.3.0",
+    "passlib[bcrypt]>=1.7.4",
+    "python-dotenv>=1.0.1",
+    "structlog>=24.4.0",
+    "tenacity>=9.0.0",
+    "orjson>=3.10.12",
+    "aiofiles>=24.1.0",
+    "anyio>=4.7.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.4",
+    "pytest-asyncio>=0.24.0",
+    "pytest-cov>=6.0.0",
+    "httpx>=0.28.0",
+    "ruff>=0.8.4",
+    "mypy>=1.13.0",
+    "types-boto3>=1.0.2",
+    "types-aiofiles>=24.1.0",
+    "factory-boy>=3.3.1",
+    "respx>=0.21.1",
+]
+
+[project.scripts]
+start = "uvicorn app.main:app --host 0.0.0.0 --port 8000"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
+
+# ── Ruff (linter + formatter) ───────────────────────────────────────────────
+[tool.ruff]
+target-version = "py311"
+line-length = 88
+exclude = [".venv", "__pycache__", ".git", "dist"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+    "ANN", # flake8-annotations (type hints)
+    "S",   # flake8-bandit (security)
+    "T20", # flake8-print
+]
+ignore = [
+    "ANN101", # missing type annotation for self
+    "ANN102", # missing type annotation for cls
+    "S101",   # assert statements (allowed in tests)
+    "B008",   # function calls in default arguments (FastAPI Depends)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["ANN", "S"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+# ── Pytest ──────────────────────────────────────────────────────────────────
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--cov=app",
+    "--cov-report=term-missing",
+    "--cov-report=xml",
+    "-v",
+]
+
+# ── Mypy ────────────────────────────────────────────────────────────────────
+[tool.mypy]
+python_version = "3.11"
+strict = true
+ignore_missing_imports = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["ffmpeg.*", "mediapipe.*", "librosa.*", "cv2.*", "yt_dlp.*"]
+ignore_missing_imports = true

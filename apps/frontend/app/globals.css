@@ -1,0 +1,320 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   AgentCut AI — Global CSS Variables & Base Styles
+   Premium dark theme: background #0A0A0F, accent violet-cyan
+   ============================================================ */
+
+@layer base {
+  :root {
+    /* ----- Color System (HSL) ----- */
+    --background: 240 6% 6%;
+    --foreground: 210 40% 98%;
+
+    --card: 240 5% 7%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 240 5% 8%;
+    --popover-foreground: 210 40% 98%;
+
+    /* Primary = Violet */
+    --primary: 263 70% 65%;
+    --primary-foreground: 210 40% 98%;
+
+    /* Secondary = Cyan */
+    --secondary: 188 78% 41%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 240 4% 16%;
+    --muted-foreground: 215 20% 65%;
+
+    --accent: 240 4% 14%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 240 4% 16%;
+    --input: 240 4% 16%;
+    --ring: 263 70% 65%;
+
+    --radius: 0.75rem;
+
+    /* ----- Custom AgentCut vars ----- */
+    --ag-bg-primary: #0A0A0F;
+    --ag-bg-secondary: #0F0F1A;
+    --ag-bg-tertiary: #13131F;
+    --ag-bg-card: #111118;
+    --ag-bg-elevated: #16161F;
+    --ag-surface-border: #1E1E2E;
+
+    --ag-violet: #8b5cf6;
+    --ag-violet-light: #a78bfa;
+    --ag-violet-dark: #7c3aed;
+    --ag-cyan: #06b6d4;
+    --ag-cyan-light: #22d3ee;
+    --ag-cyan-dark: #0891b2;
+
+    --ag-text-primary: #F8F8FF;
+    --ag-text-secondary: #A0A0B8;
+    --ag-text-muted: #6B6B85;
+
+    --ag-gradient: linear-gradient(135deg, #8b5cf6 0%, #06b6d4 100%);
+    --ag-gradient-soft: linear-gradient(135deg, rgba(139,92,246,0.12) 0%, rgba(6,182,212,0.12) 100%);
+    --ag-gradient-glow: radial-gradient(ellipse at top center, rgba(139,92,246,0.15) 0%, transparent 60%);
+  }
+
+  /* Force dark mode — AgentCut is always dark */
+  .dark {
+    --background: 240 6% 6%;
+    --foreground: 210 40% 98%;
+    --card: 240 5% 7%;
+    --card-foreground: 210 40% 98%;
+    --popover: 240 5% 8%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 263 70% 65%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 188 78% 41%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 240 4% 16%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 240 4% 14%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 240 4% 16%;
+    --input: 240 4% 16%;
+    --ring: 263 70% 65%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+    box-sizing: border-box;
+  }
+
+  html {
+    @apply scroll-smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    background-color: var(--ag-bg-primary);
+    color: var(--ag-text-primary);
+    font-family: var(--font-geist-sans), system-ui, sans-serif;
+    line-height: 1.6;
+    min-height: 100dvh;
+  }
+
+  /* Heading styles */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight;
+    color: var(--ag-text-primary);
+  }
+
+  /* Focus styles */
+  :focus-visible {
+    outline: 2px solid var(--ag-violet);
+    outline-offset: 2px;
+  }
+
+  /* Selection */
+  ::selection {
+    background-color: rgba(139, 92, 246, 0.3);
+    color: #F8F8FF;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: var(--ag-bg-secondary);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--ag-surface-border);
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--ag-text-muted);
+  }
+}
+
+@layer components {
+  /* ----- Gradient Text ----- */
+  .text-gradient {
+    background: var(--ag-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .text-gradient-violet {
+    background: linear-gradient(135deg, #a78bfa, #8b5cf6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* ----- Glass Cards ----- */
+  .glass-card {
+    background: rgba(17, 17, 24, 0.8);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(30, 30, 46, 0.8);
+    border-radius: var(--radius);
+  }
+
+  .glass-card-elevated {
+    background: rgba(22, 22, 31, 0.9);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(139, 92, 246, 0.15);
+    border-radius: var(--radius);
+  }
+
+  /* ----- Gradient Border Glow ----- */
+  .border-glow-violet {
+    border: 1px solid transparent;
+    background-clip: padding-box;
+    position: relative;
+  }
+
+  .border-glow-violet::before {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    background: linear-gradient(135deg, rgba(139,92,246,0.5), rgba(6,182,212,0.3));
+    z-index: -1;
+  }
+
+  /* ----- Shimmer loading ----- */
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      var(--ag-bg-card) 0%,
+      var(--ag-bg-elevated) 50%,
+      var(--ag-bg-card) 100%
+    );
+    background-size: 1000px 100%;
+    animation: shimmer 2s infinite linear;
+  }
+
+  /* ----- Agent status badge ----- */
+  .agent-badge-running {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium;
+    background: rgba(139, 92, 246, 0.15);
+    color: #a78bfa;
+    border: 1px solid rgba(139, 92, 246, 0.25);
+  }
+
+  .agent-badge-complete {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium;
+    background: rgba(34, 197, 94, 0.12);
+    color: #4ade80;
+    border: 1px solid rgba(34, 197, 94, 0.2);
+  }
+
+  .agent-badge-failed {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium;
+    background: rgba(239, 68, 68, 0.12);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+  }
+
+  /* ----- Virality Score Bar ----- */
+  .virality-bar {
+    @apply relative h-1.5 rounded-full overflow-hidden;
+    background: var(--ag-surface-border);
+  }
+
+  .virality-bar-fill {
+    @apply h-full rounded-full transition-all duration-700 ease-out;
+    background: var(--ag-gradient);
+  }
+
+  /* ----- Page fade-in ----- */
+  .page-enter {
+    animation: fade-in 0.4s ease-out;
+  }
+
+  /* ----- Noise texture overlay ----- */
+  .noise {
+    position: relative;
+  }
+
+  .noise::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.02'/%3E%3C/svg%3E");
+    pointer-events: none;
+    border-radius: inherit;
+  }
+}
+
+@layer utilities {
+  /* Truncation helpers */
+  .line-clamp-1 { -webkit-line-clamp: 1; }
+  .line-clamp-2 { -webkit-line-clamp: 2; }
+  .line-clamp-3 { -webkit-line-clamp: 3; }
+
+  /* Safe area for mobile */
+  .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+  .pt-safe { padding-top: env(safe-area-inset-top); }
+}
+
+/* ── Keyframe Animations ─────────────────────────────────────── */
+
+@keyframes shimmer {
+  0% { background-position: -1000px 0; }
+  100% { background-position: 1000px 0; }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes beam-rotate {
+  from { --beam-angle: 0; }
+  to { --beam-angle: 360; }
+}
+
+@keyframes retro-grid {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(60px); }
+}
+
+@property --beam-angle {
+  syntax: '<number>';
+  initial-value: 0;
+  inherits: false;
+}
+
+.animate-gradient {
+  animation: gradient-shift 3s linear infinite;
+}
+
+@keyframes gradient-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s linear infinite;
+}
+
+.animate-retro-grid {
+  animation: retro-grid 2s linear infinite;
+}
