@@ -28,7 +28,6 @@ ENV NEXT_TELEMETRY_DISABLED=1
 
 WORKDIR /app/apps/frontend
 RUN npx next build --webpack
-RUN find .next/standalone -name "server.js" -type f
 
 # --- Runner ---
 FROM base AS runner
@@ -49,4 +48,4 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-CMD ["node", "apps/frontend/server.js"]
+CMD ["sh", "-c", "find . -name server.js -maxdepth 3 && exec node $(find . -name server.js -maxdepth 3 | head -1)"]
