@@ -27,7 +27,8 @@ COPY apps/frontend ./apps/frontend
 ENV NEXT_TELEMETRY_DISABLED=1
 
 WORKDIR /app/apps/frontend
-RUN npx next build --webpack && echo "=== Standalone contents ===" && ls -la .next/standalone/ && echo "=== Apps dir ===" && ls -la .next/standalone/apps/frontend/ 2>/dev/null || echo "No apps/frontend in standalone" && echo "=== Looking for server.js ===" && find .next/standalone -name "server.js" -type f 2>/dev/null
+RUN npx next build --webpack
+RUN find .next/standalone -name "server.js" -type f
 
 # --- Runner ---
 FROM base AS runner
