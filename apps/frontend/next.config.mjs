@@ -10,9 +10,7 @@ const nextConfig = {
   serverExternalPackages: [],
 
   // Turbopack config (Next.js 16 default bundler)
-  turbopack: {
-    root: "../..",
-  },
+  turbopack: {},
 
   // Image optimization
   images: {

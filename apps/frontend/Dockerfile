@@ -36,7 +36,7 @@ ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
 ENV NEXT_TELEMETRY_DISABLED=1
 
 WORKDIR /app/apps/frontend
-RUN npx next build
+RUN NEXT_PRIVATE_WORKER=1 npx next build --no-turbopack
 
 # --- Runner ---
 FROM base AS runner
