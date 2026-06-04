@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any
+import time
+from typing import Any, Callable, Awaitable
 
 import structlog
 from langgraph.graph import END, StateGraph
@@ -17,6 +18,7 @@ from app.agents.quality import quality_agent
 from app.agents.render import render_agent
 from app.agents.story import story_agent
 from app.agents.transcript import transcript_agent
+from app.api.websocket import emit_agent_progress
 from app.models.state import AgentCutGraphState
 
 logger = structlog.get_logger(__name__)
@@ -24,46 +26,102 @@ logger = structlog.get_logger(__name__)
 MAX_QUALITY_RETRIES = 2
 
 
+# ── Progress-Emitting Node Wrapper ────────────────────────────────────────────
+
+def make_progress_node(
+    agent_name: str,
+    agent_fn: Callable[[AgentCutGraphState], Awaitable[dict[str, Any]]],
+) -> Callable[[AgentCutGraphState], Awaitable[dict[str, Any]]]:
+    """Wrap an agent node to emit WebSocket progress before and after execution."""
+
+    async def wrapped(state: AgentCutGraphState) -> dict[str, Any]:
+        project_id = state.get("project_id", "")
+
+        await emit_agent_progress(
+            project_id=project_id,
+            agent_name=agent_name,
+            status="running",
+            progress_percent=0,
+            message=f"{agent_name} agent started",
+        )
+
+        start = time.perf_counter()
+        try:
+            result = await agent_fn(state)
+            duration = time.perf_counter() - start
+
+            confidence = None
+            for r in result.get("agent_results", []):
+                if isinstance(r, dict) and r.get("agent") == agent_name:
+                    confidence = r.get("confidence_score")
+
+            await emit_agent_progress(
+                project_id=project_id,
+                agent_name=agent_name,
+                status="completed",
+                progress_percent=100,
+                message=f"{agent_name} completed in {duration:.1f}s",
+                confidence_score=confidence,
+            )
+            return result
+
+        except Exception as e:
+            duration = time.perf_counter() - start
+            await emit_agent_progress(
+                project_id=project_id,
+                agent_name=agent_name,
+                status="failed",
+                progress_percent=0,
+                message=f"{agent_name} failed: {str(e)[:200]}",
+            )
+            raise
+
+    wrapped.__name__ = f"{agent_name}_node"
+    return wrapped
+
+
 # ── Node Functions ─────────────────────────────────────────────────────────────
 
-async def ingest_node(state: AgentCutGraphState) -> dict[str, Any]:
+async def _ingest(state: AgentCutGraphState) -> dict[str, Any]:
     return await ingest_agent.run(state)
 
-
-async def transcript_node(state: AgentCutGraphState) -> dict[str, Any]:
+async def _transcript(state: AgentCutGraphState) -> dict[str, Any]:
     return await transcript_agent.run(state)
 
-
-async def story_node(state: AgentCutGraphState) -> dict[str, Any]:
+async def _story(state: AgentCutGraphState) -> dict[str, Any]:
     return await story_agent.run(state)
 
-
-async def cut_node(state: AgentCutGraphState) -> dict[str, Any]:
+async def _cut(state: AgentCutGraphState) -> dict[str, Any]:
     return await cut_agent.run(state)
 
-
-async def broll_node(state: AgentCutGraphState) -> dict[str, Any]:
+async def _broll(state: AgentCutGraphState) -> dict[str, Any]:
     return await broll_agent.run(state)
 
-
-async def caption_node(state: AgentCutGraphState) -> dict[str, Any]:
+async def _caption(state: AgentCutGraphState) -> dict[str, Any]:
     return await caption_agent.run(state)
 
-
-async def effects_node(state: AgentCutGraphState) -> dict[str, Any]:
+async def _effects(state: AgentCutGraphState) -> dict[str, Any]:
     return await effects_agent.run(state)
 
-
-async def quality_node(state: AgentCutGraphState) -> dict[str, Any]:
+async def _quality(state: AgentCutGraphState) -> dict[str, Any]:
     return await quality_agent.run(state)
 
-
-async def render_node(state: AgentCutGraphState) -> dict[str, Any]:
+async def _render(state: AgentCutGraphState) -> dict[str, Any]:
     return await render_agent.run(state)
 
-
-async def feedback_node(state: AgentCutGraphState) -> dict[str, Any]:
+async def _feedback(state: AgentCutGraphState) -> dict[str, Any]:
     return await feedback_agent.run(state)
+
+ingest_node = make_progress_node("ingest", _ingest)
+transcript_node = make_progress_node("transcript", _transcript)
+story_node = make_progress_node("story", _story)
+cut_node = make_progress_node("cut", _cut)
+broll_node = make_progress_node("broll", _broll)
+caption_node = make_progress_node("caption", _caption)
+effects_node = make_progress_node("effects", _effects)
+quality_node = make_progress_node("quality", _quality)
+render_node = make_progress_node("render", _render)
+feedback_node = make_progress_node("feedback", _feedback)
 
 
 # ── Conditional Edges ──────────────────────────────────────────────────────────

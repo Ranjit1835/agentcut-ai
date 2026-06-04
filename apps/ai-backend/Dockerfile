@@ -11,9 +11,14 @@ WORKDIR /app
 
 FROM base AS deps
 COPY pyproject.toml ./
-RUN pip install --no-cache-dir -e .
+# Create minimal package structure so pip install works
+RUN mkdir -p app && touch app/__init__.py
+RUN pip install --no-cache-dir .
 
 FROM deps AS production
+# Remove the placeholder and copy real app code
+RUN rm -rf app/
 COPY app/ ./app/
+
 EXPOSE 8000
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]

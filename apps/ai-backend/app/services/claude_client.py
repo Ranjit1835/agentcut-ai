@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
+import re
 from typing import Any
 
 import anthropic
@@ -14,15 +16,19 @@ from app.config import get_settings
 
 logger = structlog.get_logger(__name__)
 
-_client: anthropic.Anthropic | None = None
+_client: anthropic.AsyncAnthropic | None = None
+_sync_client: anthropic.Anthropic | None = None
 
 
-def get_claude_client() -> anthropic.Anthropic:
-    """Returns a singleton Anthropic client."""
+def get_claude_client() -> anthropic.AsyncAnthropic:
+    """Returns a singleton async Anthropic client."""
     global _client
     if _client is None:
         settings = get_settings()
-        _client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+        _client = anthropic.AsyncAnthropic(
+            api_key=settings.anthropic_api_key,
+            timeout=120.0,
+        )
     return _client
 
 
@@ -46,7 +52,7 @@ async def call_claude(
     response_format: type | None = None,
 ) -> str:
     """
-    Call Claude with prompt caching enabled.
+    Call Claude with prompt caching enabled (async).
 
     Uses cache_control on the system prompt to get 90% cost savings
     on repeated calls with the same system prompt.
@@ -64,18 +70,21 @@ async def call_claude(
         user_len=len(user_message),
     )
 
-    response = client.messages.create(
-        model=model,
-        max_tokens=max_tokens,
-        temperature=temperature,
-        system=[
-            {
-                "type": "text",
-                "text": system_prompt,
-                "cache_control": {"type": "ephemeral"},
-            }
-        ],
-        messages=messages,
+    response = await asyncio.wait_for(
+        client.messages.create(
+            model=model,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            system=[
+                {
+                    "type": "text",
+                    "text": system_prompt,
+                    "cache_control": {"type": "ephemeral"},
+                }
+            ],
+            messages=messages,
+        ),
+        timeout=120.0,
     )
 
     result = response.content[0].text  # type: ignore[union-attr]
@@ -90,6 +99,23 @@ async def call_claude(
     )
 
     return result
+
+
+def _extract_json(raw: str) -> dict[str, Any]:
+    """Robustly extract JSON from Claude's response, handling markdown fences and preamble."""
+    cleaned = raw.strip()
+
+    # Try to find JSON in markdown code fences first
+    fence_match = re.search(r"```(?:json)?\s*\n?(.*?)\n?\s*```", cleaned, re.DOTALL)
+    if fence_match:
+        cleaned = fence_match.group(1).strip()
+    else:
+        # Try to find raw JSON object
+        brace_match = re.search(r"\{.*\}", cleaned, re.DOTALL)
+        if brace_match:
+            cleaned = brace_match.group(0)
+
+    return json.loads(cleaned)
 
 
 @retry(
@@ -113,12 +139,8 @@ async def call_claude_json(
         temperature=temperature,
     )
 
-    cleaned = raw.strip()
-    if cleaned.startswith("```json"):
-        cleaned = cleaned[7:]
-    if cleaned.startswith("```"):
-        cleaned = cleaned[3:]
-    if cleaned.endswith("```"):
-        cleaned = cleaned[:-3]
-
-    return json.loads(cleaned.strip())
+    try:
+        return _extract_json(raw)
+    except json.JSONDecodeError as e:
+        logger.error("json_parse_failed", raw_preview=raw[:500], error=str(e))
+        raise ValueError(f"Claude returned invalid JSON: {e}. Response preview: {raw[:200]}")

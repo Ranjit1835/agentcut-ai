@@ -167,6 +167,19 @@ const config: Config = {
           "0%, 100%": { transform: "translateY(0px)" },
           "50%": { transform: "translateY(-10px)" },
         },
+        marquee: {
+          from: { transform: "translateX(0)" },
+          to: { transform: "translateX(calc(-100% - var(--gap)))" },
+        },
+        "marquee-reverse": {
+          from: { transform: "translateX(calc(-100% - var(--gap)))" },
+          to: { transform: "translateX(0)" },
+        },
+        "moveInCircle": {
+          "0%": { transform: "rotate(0deg)" },
+          "50%": { transform: "rotate(180deg)" },
+          "100%": { transform: "rotate(360deg)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -178,6 +191,8 @@ const config: Config = {
         "pulse-glow": "pulse-glow 2s ease-in-out infinite",
         "gradient-shift": "gradient-shift 6s ease infinite",
         float: "float 3s ease-in-out infinite",
+        marquee: "marquee var(--duration) linear infinite",
+        "marquee-reverse": "marquee-reverse var(--duration) linear infinite",
       },
 
       // ── Box Shadows ───────────────────────────────────────────

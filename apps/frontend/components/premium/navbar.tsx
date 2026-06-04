@@ -55,10 +55,11 @@ export function Navbar() {
         </div>
 
         <button
-          className="md:hidden text-white"
+          className="md:hidden text-white min-h-[44px] min-w-[44px] flex items-center justify-center"
           onClick={() => setMobileOpen(!mobileOpen)}
+          aria-label={mobileOpen ? "Close menu" : "Open menu"}
         >
-          {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          {mobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
         </button>
       </div>
 
@@ -72,7 +73,7 @@ export function Navbar() {
             <Link
               key={link.href}
               href={link.href}
-              className="block py-2 text-sm text-white/60 hover:text-white"
+              className="block py-3 min-h-[44px] flex items-center text-sm text-white/60 hover:text-white"
               onClick={() => setMobileOpen(false)}
             >
               {link.label}

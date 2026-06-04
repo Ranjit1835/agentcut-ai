@@ -14,6 +14,10 @@ import { AnimatedGradientText } from "@/components/magic/animated-gradient-text"
 import { NumberTicker } from "@/components/magic/number-ticker";
 import { BorderBeam } from "@/components/magic/border-beam";
 import { Particles } from "@/components/magic/particles";
+import { Globe } from "@/components/magic/globe";
+import { Marquee } from "@/components/magic/marquee";
+import { Sparkles as SparklesEffect } from "@/components/magic/sparkles";
+import { Highlight } from "@/components/aceternity/hero-highlight";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -85,12 +89,14 @@ export default function LandingPage() {
             transition={{ duration: 0.6, delay: 0.1 }}
             className="text-4xl font-bold tracking-tight sm:text-6xl lg:text-7xl"
           >
-            From long video to{" "}
-            <AnimatedGradientText className="text-4xl font-bold sm:text-6xl lg:text-7xl">
-              viral short
-            </AnimatedGradientText>
-            <br />
-            in 5 minutes
+            <SparklesEffect count={10} size={20}>
+              From long video to{" "}
+              <AnimatedGradientText className="text-4xl font-bold sm:text-6xl lg:text-7xl">
+                <Highlight>viral short</Highlight>
+              </AnimatedGradientText>
+              <br />
+              in 5 minutes
+            </SparklesEffect>
           </motion.h1>
 
           <motion.p
@@ -332,26 +338,60 @@ export default function LandingPage() {
             </h2>
           </motion.div>
 
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {testimonials.map((t, i) => (
-              <motion.div key={t.name} {...fadeUp} transition={{ delay: i * 0.1 }}>
-                <Card className="h-full">
-                  <CardContent className="p-5">
-                    <div className="flex gap-1 mb-3">
-                      {Array.from({ length: 5 }).map((_, j) => (
-                        <Star key={j} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                      ))}
-                    </div>
-                    <p className="text-sm text-white/70 italic">&ldquo;{t.quote}&rdquo;</p>
-                    <div className="mt-4 border-t border-white/5 pt-3">
-                      <p className="text-sm font-medium text-white">{t.name}</p>
-                      <p className="text-xs text-white/40">{t.role}</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
+          <Marquee direction="left" speed={35} pauseOnHover>
+            {testimonials.map((t) => (
+              <Card key={t.name} className="h-full w-[320px] shrink-0">
+                <CardContent className="p-5">
+                  <div className="flex gap-1 mb-3">
+                    {Array.from({ length: 5 }).map((_, j) => (
+                      <Star key={j} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                    ))}
+                  </div>
+                  <p className="text-sm text-white/70 italic">&ldquo;{t.quote}&rdquo;</p>
+                  <div className="mt-4 border-t border-white/5 pt-3">
+                    <p className="text-sm font-medium text-white">{t.name}</p>
+                    <p className="text-xs text-white/40">{t.role}</p>
+                  </div>
+                </CardContent>
+              </Card>
             ))}
-          </div>
+          </Marquee>
+        </div>
+      </section>
+
+      {/* Globe - Trusted Worldwide */}
+      <section className="py-24 px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-5xl">
+          <motion.div {...fadeUp} className="text-center mb-12">
+            <h2 className="text-3xl font-bold sm:text-4xl">
+              Trusted by Creators <AnimatedGradientText>Worldwide</AnimatedGradientText>
+            </h2>
+          </motion.div>
+
+          <motion.div {...fadeUp} className="flex justify-center">
+            <Globe className="h-[280px] w-[280px] sm:h-[400px] sm:w-[400px] mx-auto" config={{ dotColor: "#8B5CF6", arcColor: "#06B6D4" }} />
+          </motion.div>
+
+          <motion.div {...fadeUp} className="mt-12 grid grid-cols-1 sm:grid-cols-3 gap-8 text-center">
+            <div>
+              <div className="text-3xl font-bold text-white sm:text-4xl">
+                <NumberTicker value={10000} suffix="+" />
+              </div>
+              <p className="mt-1 text-sm text-white/50">Videos Generated</p>
+            </div>
+            <div>
+              <div className="text-3xl font-bold text-white sm:text-4xl">
+                <NumberTicker value={50} suffix="+" />
+              </div>
+              <p className="mt-1 text-sm text-white/50">Countries</p>
+            </div>
+            <div>
+              <div className="text-3xl font-bold text-white sm:text-4xl">
+                <NumberTicker value={95} suffix="%" />
+              </div>
+              <p className="mt-1 text-sm text-white/50">Retention Boost</p>
+            </div>
+          </motion.div>
         </div>
       </section>
 

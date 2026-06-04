@@ -1,10 +1,16 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Enable experimental features for App Router
-  experimental: {
-    typedRoutes: true,
-    serverComponentsExternalPackages: [],
-  },
+  // Standalone output for Docker deployments
+  output: "standalone",
+
+  // Typed routes
+  typedRoutes: false,
+
+  // External packages for server components
+  serverExternalPackages: [],
+
+  // Turbopack config (Next.js 16 default bundler)
+  turbopack: {},
 
   // Image optimization
   images: {

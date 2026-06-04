@@ -9,6 +9,7 @@ import { ShimmerButton } from "@/components/magic/shimmer-button";
 import { AnimatedGradientText } from "@/components/magic/animated-gradient-text";
 import { BorderBeam } from "@/components/magic/border-beam";
 import { Particles } from "@/components/magic/particles";
+import { CardContainer, CardBody, CardItem } from "@/components/aceternity/3d-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -136,7 +137,7 @@ export default function PricingPage() {
           </div>
         </motion.div>
 
-        {/* Pricing Cards */}
+        {/* Pricing Cards with 3D Effect */}
         <div className="mx-auto max-w-6xl grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {tiers.map((tier, i) => (
             <motion.div
@@ -144,60 +145,68 @@ export default function PricingPage() {
               {...fadeUp}
               transition={{ delay: i * 0.1 }}
             >
-              <Card
-                className={`relative h-full flex flex-col ${
-                  tier.recommended ? "border-violet-500/50" : ""
-                }`}
-              >
-                {tier.recommended && (
-                  <>
-                    <BorderBeam />
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                      <Badge className="px-3 py-1 bg-violet-600 text-white border-0">
-                        <Sparkles className="mr-1 h-3 w-3" /> Recommended
-                      </Badge>
-                    </div>
-                  </>
-                )}
-
-                <CardHeader className="pb-4">
-                  <CardTitle className="text-lg">{tier.name}</CardTitle>
-                  <div className="mt-3">
-                    <span className="text-4xl font-bold">
-                      {currency === "usd" ? `$${tier.price.usd}` : `₹${tier.price.inr}`}
-                    </span>
-                    {tier.price.usd > 0 && (
-                      <span className="text-white/40 text-sm">/month</span>
+              <CardContainer containerClassName="w-full" className="w-full">
+                <CardBody className="relative h-auto w-full">
+                  <Card
+                    className={`relative h-full flex flex-col ${
+                      tier.recommended ? "border-violet-500/50" : ""
+                    }`}
+                  >
+                    {tier.recommended && (
+                      <>
+                        <BorderBeam />
+                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
+                          <Badge className="px-3 py-1 bg-violet-600 text-white border-0">
+                            <Sparkles className="mr-1 h-3 w-3" /> Recommended
+                          </Badge>
+                        </div>
+                      </>
                     )}
-                  </div>
-                  <p className="text-xs text-white/40 mt-1">
-                    {tier.credits} credits &middot; {tier.resolution} max
-                  </p>
-                </CardHeader>
 
-                <CardContent className="flex-1 flex flex-col">
-                  <ul className="space-y-2 flex-1">
-                    {tier.features.map((feature) => (
-                      <li key={feature} className="flex items-start gap-2 text-sm text-white/60">
-                        <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />
-                        {feature}
-                      </li>
-                    ))}
-                  </ul>
+                    <CardHeader className="pb-4">
+                      <CardItem translateZ={20} className="w-full">
+                        <CardTitle className="text-lg">{tier.name}</CardTitle>
+                      </CardItem>
+                      <CardItem translateZ={40} className="w-full">
+                        <div className="mt-3">
+                          <span className="text-4xl font-bold">
+                            {currency === "usd" ? `$${tier.price.usd}` : `₹${tier.price.inr}`}
+                          </span>
+                          {tier.price.usd > 0 && (
+                            <span className="text-white/40 text-sm">/month</span>
+                          )}
+                        </div>
+                      </CardItem>
+                      <p className="text-xs text-white/40 mt-1">
+                        {tier.credits} credits &middot; {tier.resolution} max
+                      </p>
+                    </CardHeader>
 
-                  <div className="mt-6">
-                    {tier.recommended ? (
-                      <ShimmerButton className="w-full h-10 text-sm">
-                        {tier.cta} <ArrowRight className="ml-2 h-4 w-4" />
-                      </ShimmerButton>
-                    ) : (
-                      <Button variant="outline" className="w-full">
-                        {tier.cta}
-                      </Button>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+                    <CardContent className="flex-1 flex flex-col">
+                      <ul className="space-y-2 flex-1">
+                        {tier.features.map((feature) => (
+                          <li key={feature} className="flex items-start gap-2 text-sm text-white/60">
+                            <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />
+                            {feature}
+                          </li>
+                        ))}
+                      </ul>
+
+                      <CardItem translateZ={60} className="w-full mt-6">
+                        {tier.recommended ? (
+                          <ShimmerButton className="w-full h-10 text-sm">
+                            {tier.cta} <ArrowRight className="ml-2 h-4 w-4" />
+                          </ShimmerButton>
+                        ) : (
+                          <Button variant="outline" className="w-full">
+                            {tier.cta}
+                          </Button>
+                        )}
+                      </CardItem>
+                    </CardContent>
+                  </Card>
+                </CardBody>
+              </CardContainer>
             </motion.div>
           ))}
         </div>

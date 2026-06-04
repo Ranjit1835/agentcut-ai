@@ -76,16 +76,21 @@ class RenderAgent(BaseAgent):
         style = state.get("style_preset", "mrbeast")
         project_id = state["project_id"]
 
-        if not selected_clips or not upload_r2_key:
-            raise ValueError("Missing clips or source video")
+        if not selected_clips:
+            raise ValueError("No clips to render")
+        if not upload_r2_key:
+            raise ValueError("Missing source video R2 key — ingest must run first")
 
         rendered_clips = []
+        render_errors = 0
 
         with tempfile.TemporaryDirectory() as tmpdir:
             tmp = Path(tmpdir)
 
             # Download source video
             source_path = await download_file(upload_r2_key, tmp / "source.mp4")
+            if not source_path.exists() or source_path.stat().st_size == 0:
+                raise ValueError("Source video download failed or file is empty")
 
             for clip in selected_clips:
                 if not clip.get("approved", True):
@@ -94,52 +99,82 @@ class RenderAgent(BaseAgent):
                     rendered_clips.append(clip_copy)
                     continue
 
-                clip_id = clip.get("id", f"clip_{clip['clip_index']}")
+                clip_id = clip.get("id", f"clip_{clip.get('clip_index', 0)}")
+                start_time = clip.get("start_time", 0)
+                end_time = clip.get("end_time", 0)
 
-                # Cut the clip segment
-                clip_path = tmp / f"{clip_id}_raw.mp4"
-                await cut_clip(
-                    source_path,
-                    clip["start_time"],
-                    clip["end_time"],
-                    clip_path,
-                )
+                if end_time <= start_time:
+                    logger.warning("render_skip_invalid_clip", clip_id=clip_id)
+                    clip_copy = dict(clip)
+                    clip_copy["render_status"] = "failed"
+                    rendered_clips.append(clip_copy)
+                    continue
 
-                # Generate ASS subtitle file
-                captions = caption_data.get(clip_id, [])
-                ass_path = None
-                if captions:
-                    ass_path = tmp / f"{clip_id}.ass"
-                    self._generate_ass(captions, ass_path, style, clip["start_time"])
+                try:
+                    # Cut the clip segment
+                    clip_path = tmp / f"{clip_id}_raw.mp4"
+                    await cut_clip(source_path, start_time, end_time, clip_path)
 
-                # Render vertical (9:16) with subtitles
-                output_path = tmp / f"{clip_id}_final.mp4"
-                await render_vertical(
-                    video_path=clip_path,
-                    output_path=output_path,
-                    ass_subtitle_path=ass_path,
-                    resolution="1080p",
-                )
+                    if not clip_path.exists() or clip_path.stat().st_size == 0:
+                        raise ValueError(f"FFmpeg cut produced empty file for {clip_id}")
 
-                # Upload to R2
-                r2_key = f"projects/{project_id}/renders/{uuid.uuid4()}.mp4"
-                await upload_file(output_path, r2_key, "video/mp4")
+                    # Generate ASS subtitle file
+                    captions = caption_data.get(clip_id, [])
+                    ass_path = None
+                    if captions:
+                        ass_path = tmp / f"{clip_id}.ass"
+                        self._generate_ass(captions, ass_path, style, start_time)
 
-                # Generate download URL
-                download_url = await generate_signed_url(r2_key)
+                    # Render vertical (9:16) with subtitles
+                    output_path = tmp / f"{clip_id}_final.mp4"
+                    await render_vertical(
+                        video_path=clip_path,
+                        output_path=output_path,
+                        ass_subtitle_path=ass_path,
+                        resolution="1080p",
+                    )
 
-                clip_copy = dict(clip)
-                clip_copy["render_status"] = "complete"
-                clip_copy["render_r2_key"] = r2_key
-                clip_copy["render_url"] = download_url
-                rendered_clips.append(clip_copy)
+                    if not output_path.exists() or output_path.stat().st_size == 0:
+                        raise ValueError(f"Vertical render produced empty file for {clip_id}")
 
-                logger.info("clip_rendered", clip_id=clip_id, r2_key=r2_key)
+                    # Upload to R2
+                    r2_key = f"projects/{project_id}/renders/{uuid.uuid4()}.mp4"
+                    await upload_file(output_path, r2_key, "video/mp4")
+
+                    # Generate download URL
+                    download_url = await generate_signed_url(r2_key)
+
+                    clip_copy = dict(clip)
+                    clip_copy["render_status"] = "complete"
+                    clip_copy["render_r2_key"] = r2_key
+                    clip_copy["render_url"] = download_url
+                    rendered_clips.append(clip_copy)
+
+                    logger.info("clip_rendered", clip_id=clip_id, r2_key=r2_key)
+
+                except Exception as e:
+                    render_errors += 1
+                    logger.error("render_clip_failed", clip_id=clip_id, error=str(e))
+                    clip_copy = dict(clip)
+                    clip_copy["render_status"] = "failed"
+                    clip_copy["render_error"] = str(e)
+                    rendered_clips.append(clip_copy)
+
+        successful = sum(1 for c in rendered_clips if c.get("render_status") == "complete")
+        logger.info(
+            "render_complete",
+            total=len(rendered_clips),
+            successful=successful,
+            failed=render_errors,
+        )
+
+        if successful == 0 and len(selected_clips) > 0:
+            raise ValueError(f"All {len(selected_clips)} clips failed to render")
 
         return {
             "selected_clips": rendered_clips,
             "current_stage": "complete",
-            "_confidence": 0.95,
+            "_confidence": 0.95 if render_errors == 0 else 0.75,
         }
 
     def _generate_ass(

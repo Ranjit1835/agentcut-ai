@@ -111,6 +111,9 @@ supabase/.temp/
 # ----- Docker -----
 docker-compose.override.yml
 
+# ----- Local storage (dev only) -----
+.local-storage/
+
 # ----- Misc -----
 .cache/
 .parcel-cache/

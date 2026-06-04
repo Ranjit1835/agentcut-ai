@@ -77,23 +77,37 @@ class FeedbackAgent(BaseAgent):
             clip_summaries.append({
                 "id": clip.get("id"),
                 "title": clip.get("title"),
-                "duration": clip.get("end_time", 0) - clip.get("start_time", 0),
+                "duration": round(clip.get("end_time", 0) - clip.get("start_time", 0), 1),
                 "virality_score": clip.get("virality_score"),
                 "quality_scores": clip.get("quality_scores", {}),
             })
 
-        result = await call_claude_json(
-            system_prompt=FEEDBACK_SYSTEM_PROMPT,
-            user_message=f"""User feedback: "{feedback_input}"
+        import json as _json
+
+        try:
+            result = await call_claude_json(
+                system_prompt=FEEDBACK_SYSTEM_PROMPT,
+                user_message=f"""User feedback: "{feedback_input}"
 
 Current style: {style}
-Current clips: {clip_summaries}
+Current clips:
+{_json.dumps(clip_summaries, indent=2)}
 
 Determine which agents need to re-run and what parameters to change.""",
-            model="claude-sonnet-4-6",
-            max_tokens=2048,
-            temperature=0.3,
-        )
+                model="claude-sonnet-4-6",
+                max_tokens=2048,
+                temperature=0.3,
+            )
+        except Exception as e:
+            logger.error("feedback_claude_call_failed", error=str(e))
+            return {
+                "_confidence": 0.50,
+                "_feedback_result": {
+                    "agents_to_rerun": ["caption", "render"],
+                    "parsed_actions": [{"action": feedback_input, "parameter_changes": {}, "reason": "Fallback"}],
+                    "response_message": f"I'll try to apply your feedback: \"{feedback_input}\". Re-running caption and render agents.",
+                },
+            }
 
         agents_to_rerun = result.get("agents_to_rerun", [])
         parsed_actions = result.get("parsed_actions", [])
@@ -108,18 +122,18 @@ Determine which agents need to re-run and what parameters to change.""",
         for action in parsed_actions:
             params = action.get("parameter_changes", {})
 
-            if "silence_threshold" in params:
-                # Will be used by cut agent on rerun
-                pass
-            if "font_size" in params:
-                # Will affect caption generation
-                pass
             if "style_preset" in params:
                 updates["style_preset"] = params["style_preset"]
             if "max_clip_duration" in params:
-                updates["max_clip_duration"] = float(params["max_clip_duration"])
+                try:
+                    updates["max_clip_duration"] = float(params["max_clip_duration"])
+                except (ValueError, TypeError):
+                    pass
             if "min_clip_duration" in params:
-                updates["min_clip_duration"] = float(params["min_clip_duration"])
+                try:
+                    updates["min_clip_duration"] = float(params["min_clip_duration"])
+                except (ValueError, TypeError):
+                    pass
 
         # Store feedback event data (to be persisted by the API layer)
         updates["_feedback_result"] = {
@@ -127,6 +141,12 @@ Determine which agents need to re-run and what parameters to change.""",
             "parsed_actions": parsed_actions,
             "response_message": response_message,
         }
+
+        logger.info(
+            "feedback_complete",
+            agents_to_rerun=agents_to_rerun,
+            actions_count=len(parsed_actions),
+        )
 
         return updates
 

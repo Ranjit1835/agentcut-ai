@@ -112,6 +112,15 @@ def create_app() -> FastAPI:
 
     app.include_router(api_router, prefix="/api/v1")
 
+    # ----- Local storage file serving (dev only) ----------------------------
+    if settings.is_development:
+        from pathlib import Path
+        from fastapi.staticfiles import StaticFiles
+
+        local_storage = Path(__file__).resolve().parent.parent / ".local-storage"
+        local_storage.mkdir(exist_ok=True)
+        app.mount("/storage", StaticFiles(directory=str(local_storage)), name="local-storage")
+
     # ----- Health check (no auth required) -----------------------------------
     @app.get("/health", tags=["System"], summary="Health check")
     async def health_check() -> dict[str, str]:

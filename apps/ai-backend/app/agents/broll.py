@@ -36,7 +36,7 @@ Rules:
 
 
 class BrollAgent(BaseAgent):
-    name = AgentName.INGESTION  # B-roll uses ingestion name slot
+    name = AgentName.BROLL
 
     async def _execute(self, state: AgentCutGraphState) -> dict[str, Any]:
         selected_clips = state.get("selected_clips", [])
@@ -49,21 +49,28 @@ class BrollAgent(BaseAgent):
         for clip in selected_clips:
             clip_copy = dict(clip)
 
-            # Get B-roll suggestions from Claude
-            suggestions = await self._get_suggestions(clip_copy)
+            try:
+                # Get B-roll suggestions from Claude
+                suggestions = await self._get_suggestions(clip_copy)
 
-            # Search Pexels for each suggestion
-            broll_results = []
-            for suggestion in suggestions:
-                videos = await self._search_pexels(suggestion["search_query"])
-                if videos:
-                    broll_results.append({
-                        **suggestion,
-                        "pexels_results": videos[:3],
-                    })
+                # Search Pexels for each suggestion
+                broll_results = []
+                for suggestion in suggestions:
+                    videos = await self._search_pexels(suggestion.get("search_query", ""))
+                    if videos:
+                        broll_results.append({
+                            **suggestion,
+                            "pexels_results": videos[:3],
+                        })
 
-            clip_copy["broll_suggestions"] = broll_results
+                clip_copy["broll_suggestions"] = broll_results
+            except Exception as e:
+                logger.error("broll_failed_for_clip", clip_id=clip.get("id"), error=str(e))
+                clip_copy["broll_suggestions"] = []
+
             updated_clips.append(clip_copy)
+
+        logger.info("broll_complete", clips_processed=len(updated_clips))
 
         return {
             "selected_clips": updated_clips,
@@ -72,47 +79,57 @@ class BrollAgent(BaseAgent):
 
     async def _get_suggestions(self, clip: dict[str, Any]) -> list[dict[str, Any]]:
         """Get B-roll search term suggestions from Claude."""
-        result = await call_claude_json(
-            system_prompt=BROLL_SYSTEM_PROMPT,
-            user_message=f"""Clip title: {clip.get('title', '')}
+        try:
+            result = await call_claude_json(
+                system_prompt=BROLL_SYSTEM_PROMPT,
+                user_message=f"""Clip title: {clip.get('title', '')}
 Hook: {clip.get('hook_text', '')}
 Narrative: {clip.get('narrative_summary', '')}
 Duration: {clip.get('end_time', 0) - clip.get('start_time', 0):.1f}s""",
-            model="claude-haiku-4-5-20251001",
-            max_tokens=1024,
-        )
-        return result.get("suggestions", [])
+                model="claude-haiku-4-5-20251001",
+                max_tokens=1024,
+            )
+            return result.get("suggestions", [])
+        except Exception as e:
+            logger.error("broll_suggestions_failed", error=str(e))
+            return []
 
     async def _search_pexels(self, query: str, per_page: int = 5) -> list[dict[str, str]]:
         """Search Pexels API for B-roll videos."""
+        if not query:
+            return []
+
         import os
         api_key = os.environ.get("PEXELS_API_KEY", "")
         if not api_key:
             logger.warning("pexels_api_key_missing")
             return []
 
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                "https://api.pexels.com/videos/search",
-                params={"query": query, "per_page": per_page, "orientation": "portrait"},
-                headers={"Authorization": api_key},
-                timeout=10.0,
-            )
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.get(
+                    "https://api.pexels.com/videos/search",
+                    params={"query": query, "per_page": per_page, "orientation": "portrait"},
+                    headers={"Authorization": api_key},
+                )
 
-            if response.status_code != 200:
-                logger.warning("pexels_search_failed", status=response.status_code)
-                return []
+                if response.status_code != 200:
+                    logger.warning("pexels_search_failed", status=response.status_code, query=query)
+                    return []
 
-            data = response.json()
-            return [
-                {
-                    "id": str(v["id"]),
-                    "url": v["url"],
-                    "image": v.get("image", ""),
-                    "duration": v.get("duration", 0),
-                }
-                for v in data.get("videos", [])
-            ]
+                data = response.json()
+                return [
+                    {
+                        "id": str(v["id"]),
+                        "url": v["url"],
+                        "image": v.get("image", ""),
+                        "duration": v.get("duration", 0),
+                    }
+                    for v in data.get("videos", [])
+                ]
+        except Exception as e:
+            logger.error("pexels_api_error", query=query, error=str(e))
+            return []
 
 
 broll_agent = BrollAgent()

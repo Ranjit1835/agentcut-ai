@@ -45,6 +45,7 @@ class AgentName(StrEnum):
     ANALYSIS = "analysis"
     CLIP_SELECTOR = "clip_selector"
     CAPTION = "caption"
+    EFFECTS = "effects"
     BROLL = "broll"
     RENDER = "render"
     QUALITY = "quality"
@@ -377,8 +378,8 @@ class AgentCutGraphState(TypedDict, total=False):
     filler_words: Annotated[list[dict[str, Any]], operator.add]
     silences: Annotated[list[dict[str, Any]], operator.add]
     detected_language: str | None
-    clip_candidates: Annotated[list[dict[str, Any]], operator.add]
-    selected_clips: Annotated[list[dict[str, Any]], operator.add]
+    clip_candidates: list[dict[str, Any]]
+    selected_clips: list[dict[str, Any]]
     caption_segments_by_clip: dict[str, list[dict[str, Any]]]
     current_stage: str
     agent_results: Annotated[list[dict[str, Any]], operator.add]

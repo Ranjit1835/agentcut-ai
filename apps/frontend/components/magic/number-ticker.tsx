@@ -26,8 +26,8 @@ export function NumberTicker({
 
   useEffect(() => {
     const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
+      ([entry]: IntersectionObserverEntry[]) => {
+        if (entry?.isIntersecting) {
           setIsVisible(true);
         }
       },

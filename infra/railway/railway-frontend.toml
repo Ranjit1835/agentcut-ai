@@ -1,0 +1,31 @@
+# ============================================================
+# AgentCut AI — Railway Deployment Configuration
+# Service: frontend (Next.js)
+# ============================================================
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "apps/frontend/Dockerfile"
+watchPatterns = [
+  "apps/frontend/**",
+  "packages/shared-types/**",
+]
+
+[deploy]
+healthcheckPath = "/"
+healthcheckTimeout = 60
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
+numReplicas = 1
+
+[service]
+internalPort = 3000
+
+# Build args (NEXT_PUBLIC_* must be set at build time):
+# NEXT_PUBLIC_SUPABASE_URL
+# NEXT_PUBLIC_SUPABASE_ANON_KEY
+# NEXT_PUBLIC_API_URL       — Set to the Railway backend URL
+# NEXT_PUBLIC_APP_URL       — Set to this frontend's Railway URL
+#
+# Runtime env vars:
+# SUPABASE_SERVICE_ROLE_KEY — For server-side Supabase operations

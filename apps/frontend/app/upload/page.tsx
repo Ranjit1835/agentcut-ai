@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Upload, Link2, Sparkles, Check, ArrowRight } from "lucide-react";
+import { Upload, Link2, Sparkles, Check, ArrowRight, Loader2 } from "lucide-react";
 import { Navbar } from "@/components/premium/navbar";
 import { ShimmerButton } from "@/components/magic/shimmer-button";
 import { Particles } from "@/components/magic/particles";
@@ -44,16 +45,84 @@ const stylePresets = [
 ];
 
 export default function UploadPage() {
+  const router = useRouter();
   const [mode, setMode] = useState<"upload" | "url">("url");
   const [url, setUrl] = useState("");
   const [selectedStyle, setSelectedStyle] = useState("mrbeast");
   const [isDragging, setIsDragging] = useState(false);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setUploadedFile(file);
+      setMode("upload");
+      setError(null);
+    }
+  };
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    setMode("upload");
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith("video/")) {
+      setUploadedFile(file);
+      setMode("upload");
+      setError(null);
+    }
   }, []);
+
+  const handleGenerate = async () => {
+    setError(null);
+
+    // Validate input
+    if (mode === "url" && !url.trim()) {
+      setError("Please enter a YouTube URL");
+      return;
+    }
+    if (mode === "upload" && !uploadedFile) {
+      setError("Please upload a video file");
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+      // Step 1: Create project via API
+      const createRes = await fetch(`${apiUrl}/api/v1/projects/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          source_url: mode === "url" ? url : undefined,
+          caption_style: selectedStyle,
+          source_type: mode,
+        }),
+      });
+      if (!createRes.ok) {
+        const err = await createRes.json().catch(() => ({ detail: "Failed to create project" }));
+        throw new Error(err.detail || "Failed to create project");
+      }
+      const project = await createRes.json();
+
+      // Step 2: Trigger the processing pipeline
+      const processRes = await fetch(`${apiUrl}/api/v1/projects/${project.id}/process`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!processRes.ok) {
+        const err = await processRes.json().catch(() => ({ detail: "Failed to start processing" }));
+        throw new Error(err.detail || "Failed to start processing");
+      }
+
+      router.push(`/projects/${project.id}/processing`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong. Is the backend running?");
+    }
+  };
 
   return (
     <div className="relative min-h-screen bg-[#0A0A0F] text-white">
@@ -153,12 +222,26 @@ export default function UploadPage() {
                     animate={{ opacity: 1, height: "auto" }}
                     className="mt-6"
                   >
-                    <input type="file" accept="video/*" className="hidden" id="video-upload" />
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="video/*"
+                      className="hidden"
+                      id="video-upload"
+                      onChange={handleFileChange}
+                    />
                     <label
                       htmlFor="video-upload"
                       className="cursor-pointer rounded-lg border border-dashed border-white/20 px-8 py-4 text-sm text-white/50 hover:border-violet-500/50 hover:text-violet-400 transition-colors"
                     >
-                      Click to browse files
+                      {uploadedFile ? (
+                        <span className="flex items-center gap-2 text-violet-400">
+                          <Check className="h-4 w-4" />
+                          {uploadedFile.name}
+                        </span>
+                      ) : (
+                        "Click to browse files"
+                      )}
                     </label>
                   </motion.div>
                 )}
@@ -208,10 +291,27 @@ export default function UploadPage() {
           transition={{ delay: 0.3 }}
           className="mt-10 text-center"
         >
-          <ShimmerButton className="h-14 px-12 text-lg">
-            <Sparkles className="mr-2 h-5 w-5" />
-            Generate Shorts
-            <ArrowRight className="ml-2 h-5 w-5" />
+          {error && (
+            <motion.p
+              initial={{ opacity: 0, y: -5 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-4 text-sm text-red-400"
+            >
+              {error}
+            </motion.p>
+          )}
+          <ShimmerButton
+            className="h-14 px-12 text-lg"
+            onClick={handleGenerate}
+            disabled={isGenerating}
+          >
+            {isGenerating ? (
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+            ) : (
+              <Sparkles className="mr-2 h-5 w-5" />
+            )}
+            {isGenerating ? "Creating Project..." : "Generate Shorts"}
+            {!isGenerating && <ArrowRight className="ml-2 h-5 w-5" />}
           </ShimmerButton>
           <p className="mt-3 text-xs text-white/30">
             This will use ~1 credit per minute of source video

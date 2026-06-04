@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -28,11 +27,30 @@ class TranscriptAgent(BaseAgent):
             raise ValueError("No audio_r2_key in state — ingest must run first")
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            audio_path = await download_file(audio_r2_key, Path(tmpdir) / "audio.wav")
+            # Derive extension from the R2 key
+            ext = audio_r2_key.rsplit(".", 1)[-1] if "." in audio_r2_key else "mp3"
+            audio_path = await download_file(audio_r2_key, Path(tmpdir) / f"audio.{ext}")
+
+            if not audio_path.exists() or audio_path.stat().st_size == 0:
+                raise ValueError("Downloaded audio file is empty or missing")
+
             result = await transcribe_audio(audio_path)
 
         words = result.get("words", [])
         full_text = result.get("text", "")
+
+        if not full_text or not full_text.strip():
+            raise ValueError(
+                "Whisper returned empty transcript — audio may have no speech, "
+                "be too noisy, or be in an unsupported language"
+            )
+
+        if not words:
+            logger.warning(
+                "transcript_no_word_timestamps",
+                text_length=len(full_text),
+                project_id=state.get("project_id"),
+            )
 
         # Detect filler words
         filler_occurrences = []
@@ -77,6 +95,14 @@ class TranscriptAgent(BaseAgent):
             {"word": w["word"], "start": w["start"], "end": w["end"], "confidence": 1.0}
             for w in words
         ]
+
+        logger.info(
+            "transcript_complete",
+            words=len(word_timestamps),
+            fillers=len(filler_occurrences),
+            silences=len(silences),
+            text_length=len(full_text),
+        )
 
         return {
             "full_transcript": full_text,

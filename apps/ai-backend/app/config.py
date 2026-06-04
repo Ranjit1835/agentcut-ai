@@ -78,8 +78,8 @@ class Settings(BaseSettings):
     r2_public_url: str = Field(..., alias="R2_PUBLIC_URL")
 
     # ----- Inngest -----------------------------------------------------------
-    inngest_event_key: str = Field(..., alias="INNGEST_EVENT_KEY")
-    inngest_signing_key: str = Field(..., alias="INNGEST_SIGNING_KEY")
+    inngest_event_key: str = Field(default="", alias="INNGEST_EVENT_KEY")
+    inngest_signing_key: str = Field(default="", alias="INNGEST_SIGNING_KEY")
 
     # ----- Sentry ------------------------------------------------------------
     sentry_dsn: str = Field(default="", alias="SENTRY_DSN")
@@ -126,8 +126,12 @@ class Settings(BaseSettings):
     @field_validator("allowed_origins", mode="before")
     @classmethod
     def parse_allowed_origins(cls, v: str | list[str]) -> list[str]:
-        """Parse comma-separated ALLOWED_ORIGINS env var."""
+        """Parse ALLOWED_ORIGINS from JSON array or comma-separated string."""
         if isinstance(v, str):
+            v = v.strip()
+            if v.startswith("["):
+                import json
+                return json.loads(v)
             return [origin.strip() for origin in v.split(",") if origin.strip()]
         return v
 

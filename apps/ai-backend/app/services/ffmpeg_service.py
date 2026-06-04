@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import tempfile
 from pathlib import Path
@@ -11,6 +12,22 @@ from typing import Any
 import structlog
 
 logger = structlog.get_logger(__name__)
+
+
+def _get_ffmpeg_env() -> dict[str, str]:
+    """Return env dict with FFmpeg bin dir added to PATH if not already present."""
+    env = os.environ.copy()
+    # Check FFMPEG_BIN_DIR env var first, then common install locations
+    extra_dir = os.environ.get("FFMPEG_BIN_DIR", "")
+    search_dirs = [extra_dir] if extra_dir else []
+    # Windows local dev fallback (ignored on Linux/Docker where ffmpeg is in PATH)
+    if os.name == "nt":
+        home = os.path.expanduser("~")
+        search_dirs.append(os.path.join(home, "ffmpeg-master-latest-win64-gpl", "ffmpeg-master-latest-win64-gpl", "bin"))
+    for d in search_dirs:
+        if d and os.path.isdir(d) and d not in env.get("PATH", ""):
+            env["PATH"] = d + os.pathsep + env.get("PATH", "")
+    return env
 
 
 async def extract_audio(video_path: str | Path, output_format: str = "wav") -> Path:
@@ -26,7 +43,7 @@ async def extract_audio(video_path: str | Path, output_format: str = "wav") -> P
     ]
 
     logger.info("ffmpeg_extract_audio", input=str(video_path))
-    result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=600, env=_get_ffmpeg_env())
 
     if result.returncode != 0:
         raise RuntimeError(f"FFmpeg audio extraction failed: {result.stderr}")
@@ -44,7 +61,7 @@ async def get_video_metadata(video_path: str | Path) -> dict[str, Any]:
         str(video_path),
     ]
 
-    result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=60, env=_get_ffmpeg_env())
     if result.returncode != 0:
         raise RuntimeError(f"ffprobe failed: {result.stderr}")
 
@@ -78,7 +95,7 @@ async def cut_clip(
         "-y", str(output_path),
     ]
 
-    result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=300, env=_get_ffmpeg_env())
     if result.returncode != 0:
         raise RuntimeError(f"FFmpeg cut failed: {result.stderr}")
 
@@ -119,7 +136,9 @@ async def render_vertical(
 
     # Add subtitles if ASS file provided
     if ass_subtitle_path:
-        filters.append(f"ass='{ass_subtitle_path}'")
+        # FFmpeg on Windows needs forward slashes and escaped colons in filter paths
+        ass_str = str(ass_subtitle_path).replace("\\", "/").replace(":", "\\:")
+        filters.append(f"ass='{ass_str}'")
 
     filter_str = ",".join(filters)
 
@@ -133,7 +152,7 @@ async def render_vertical(
     ]
 
     logger.info("ffmpeg_render_vertical", resolution=resolution, output=str(output_path))
-    result = subprocess.run(cmd, capture_output=True, text=True, timeout=1200)
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=1200, env=_get_ffmpeg_env())
 
     if result.returncode != 0:
         raise RuntimeError(f"FFmpeg render failed: {result.stderr}")
@@ -154,7 +173,7 @@ async def generate_thumbnail(video_path: str | Path, time_seconds: float = 1.0) 
         "-y", str(thumb_path),
     ]
 
-    result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=60, env=_get_ffmpeg_env())
     if result.returncode != 0:
         raise RuntimeError(f"FFmpeg thumbnail failed: {result.stderr}")
 
@@ -215,7 +234,7 @@ async def remove_silences(
         "-y", str(output_path),
     ]
 
-    result = subprocess.run(cmd, capture_output=True, text=True, timeout=1200)
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=1200, env=_get_ffmpeg_env())
     if result.returncode != 0:
         raise RuntimeError(f"FFmpeg silence removal failed: {result.stderr}")
 

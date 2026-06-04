@@ -64,9 +64,13 @@ class CaptionAgent(BaseAgent):
         caption_segments_by_clip: dict[str, list[dict[str, Any]]] = {}
 
         for clip in selected_clips:
-            clip_id = clip.get("id", f"clip_{clip['clip_index']}")
-            start = clip["start_time"]
-            end = clip["end_time"]
+            clip_id = clip.get("id", f"clip_{clip.get('clip_index', 0)}")
+            start = clip.get("start_time", 0)
+            end = clip.get("end_time", 0)
+
+            if end <= start:
+                logger.warning("caption_skip_invalid_clip", clip_id=clip_id)
+                continue
 
             # Get words within this clip's timeframe
             clip_words = [
@@ -75,35 +79,72 @@ class CaptionAgent(BaseAgent):
             ]
 
             if not clip_words:
+                # Fall back to generating captions from hook/title text
+                logger.warning("caption_no_words_for_clip", clip_id=clip_id, start=start, end=end)
+                hook = clip.get("hook_text", clip.get("title", ""))
+                if hook:
+                    # Create a single caption segment from the hook
+                    caption_segments_by_clip[clip_id] = [{
+                        "index": 0,
+                        "start": 0.0,
+                        "end": min(3.0, end - start),
+                        "text": hook,
+                        "emphasized_words": [],
+                        "emotion": "neutral",
+                    }]
                 continue
 
             clip_text = " ".join(w["word"] for w in clip_words)
 
-            result = await call_claude_json(
-                system_prompt=CAPTION_SYSTEM_PROMPT,
-                user_message=f"""Style preset: {style}
+            # Make word timestamps relative to clip start for cleaner prompt
+            relative_words = [
+                {"word": w["word"], "start": round(w["start"] - start, 3), "end": round(w["end"] - start, 3)}
+                for w in clip_words
+            ]
+
+            try:
+                result = await call_claude_json(
+                    system_prompt=CAPTION_SYSTEM_PROMPT,
+                    user_message=f"""Style preset: {style}
 Clip title: {clip.get('title', '')}
 Hook: {clip.get('hook_text', '')}
 Duration: {end - start:.1f}s
 
-Word timestamps:
-{json.dumps(clip_words[:200], indent=2)}
+Word timestamps (relative to clip start):
+{json.dumps(relative_words[:200], indent=2)}
 
 Full clip text:
 {clip_text[:3000]}""",
-                model="claude-haiku-4-5-20251001",
-                max_tokens=4096,
-                temperature=0.3,
-            )
+                    model="claude-haiku-4-5-20251001",
+                    max_tokens=4096,
+                    temperature=0.3,
+                )
 
-            segments = result.get("segments", [])
+                segments = result.get("segments", [])
 
-            # Offset timestamps to be relative to clip start
-            for seg in segments:
-                seg["start"] = round(seg["start"], 3)
-                seg["end"] = round(seg["end"], 3)
+                # Validate and clamp segment timestamps
+                clip_duration = end - start
+                valid_segments = []
+                for seg in segments:
+                    seg_start = max(0, round(seg.get("start", 0), 3))
+                    seg_end = min(clip_duration, round(seg.get("end", 0), 3))
+                    if seg_end > seg_start and seg.get("text", "").strip():
+                        seg["start"] = seg_start
+                        seg["end"] = seg_end
+                        valid_segments.append(seg)
 
-            caption_segments_by_clip[clip_id] = segments
+                caption_segments_by_clip[clip_id] = valid_segments
+
+            except Exception as e:
+                logger.error("caption_failed_for_clip", clip_id=clip_id, error=str(e))
+                # Don't fail the whole pipeline — skip this clip's captions
+                continue
+
+        logger.info(
+            "caption_complete",
+            clips_captioned=len(caption_segments_by_clip),
+            total_segments=sum(len(s) for s in caption_segments_by_clip.values()),
+        )
 
         return {
             "caption_segments_by_clip": caption_segments_by_clip,

@@ -1,0 +1,57 @@
+# ============================================================
+# AgentCut AI — Railway Deployment Configuration
+# Service: ai-backend (FastAPI Python service)
+# ============================================================
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "apps/ai-backend/Dockerfile"
+watchPatterns = [
+  "apps/ai-backend/**",
+  "packages/shared-types/**",
+]
+
+[deploy]
+startCommand = "uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4 --log-level info"
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5
+numReplicas = 1
+
+[service]
+internalPort = 8000
+
+# Environment variables are configured in the Railway dashboard.
+# Reference these secrets from the Railway project settings:
+#
+# --- Required ---
+# ANTHROPIC_API_KEY          — Anthropic Claude API key
+# GROQ_API_KEY               — Groq inference API key
+# OPENAI_API_KEY             — OpenAI API key (fallback models)
+# SUPABASE_SERVICE_ROLE_KEY  — Supabase admin access
+# NEXT_PUBLIC_SUPABASE_URL   — Supabase project URL
+# DATABASE_URL               — PostgreSQL connection string
+# BACKEND_SECRET_KEY         — Internal auth secret (min 32 chars)
+# ALLOWED_ORIGINS            — CORS origins (comma-separated)
+#
+# --- Storage ---
+# AWS_ACCESS_KEY_ID          — Cloudflare R2 access key
+# AWS_SECRET_ACCESS_KEY      — Cloudflare R2 secret key
+# AWS_REGION                 — Set to "auto" for R2
+# R2_BUCKET_NAME             — R2 bucket name
+# R2_ENDPOINT_URL            — R2 endpoint URL
+# R2_PUBLIC_URL              — Public CDN URL for assets
+#
+# --- Observability ---
+# LANGCHAIN_TRACING_V2       — Set to "true"
+# LANGCHAIN_ENDPOINT         — LangSmith endpoint
+# LANGCHAIN_API_KEY          — LangSmith API key
+# LANGCHAIN_PROJECT          — LangSmith project name
+# SENTRY_DSN                 — Sentry error tracking DSN
+# POSTHOG_API_KEY            — PostHog server-side API key
+#
+# --- Optional ---
+# REDIS_URL                  — Redis connection string (caching)
+# INNGEST_EVENT_KEY          — Inngest background job event key
+# INNGEST_SIGNING_KEY        — Inngest webhook signing key

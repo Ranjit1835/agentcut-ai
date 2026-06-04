@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { Plus, Video, Clock, Zap, MoreHorizontal, Play } from "lucide-react";
+import { Plus, Video, Clock, Zap, MoreHorizontal, Play, Sparkles } from "lucide-react";
 import { Navbar } from "@/components/premium/navbar";
 import { ShimmerButton } from "@/components/magic/shimmer-button";
 import { NumberTicker } from "@/components/magic/number-ticker";
