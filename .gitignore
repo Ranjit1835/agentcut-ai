@@ -47,6 +47,7 @@ sdist/
 develop-eggs/
 .installed.cfg
 lib/
+!apps/frontend/lib/
 lib64/
 wheels/
 share/python-wheels/
