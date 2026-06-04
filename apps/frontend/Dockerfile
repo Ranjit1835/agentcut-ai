@@ -23,16 +23,7 @@ COPY package.json turbo.json ./
 COPY packages/shared-types ./packages/shared-types
 COPY apps/frontend ./apps/frontend
 
-# Build args become env vars at build time (Next.js inlines NEXT_PUBLIC_* at build)
-ARG NEXT_PUBLIC_SUPABASE_URL
-ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
-ARG NEXT_PUBLIC_API_URL
-ARG NEXT_PUBLIC_APP_URL
-
-ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
-ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
-ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
-ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
+# Railway injects env vars at build time — no ARGs needed
 ENV NEXT_TELEMETRY_DISABLED=1
 
 WORKDIR /app/apps/frontend
