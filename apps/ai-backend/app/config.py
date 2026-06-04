@@ -40,9 +40,9 @@ class Settings(BaseSettings):
         min_length=32,
         description="Secret key for signing JWT tokens and internal auth",
     )
-    allowed_origins: list[str] = Field(
-        default=["http://localhost:3000"],
-        description="CORS allowed origins",
+    allowed_origins: str = Field(
+        default="http://localhost:3000",
+        description="CORS allowed origins (JSON array or comma-separated)",
     )
 
     # ----- Supabase ----------------------------------------------------------
@@ -122,18 +122,15 @@ class Settings(BaseSettings):
     # ----- Redis (optional) --------------------------------------------------
     redis_url: str = Field(default="", alias="REDIS_URL")
 
-    # ----- Validators --------------------------------------------------------
-    @field_validator("allowed_origins", mode="before")
-    @classmethod
-    def parse_allowed_origins(cls, v: str | list[str]) -> list[str]:
+    # ----- Helpers -----------------------------------------------------------
+    @property
+    def allowed_origins_list(self) -> list[str]:
         """Parse ALLOWED_ORIGINS from JSON array or comma-separated string."""
-        if isinstance(v, str):
-            v = v.strip()
-            if v.startswith("["):
-                import json
-                return json.loads(v)
-            return [origin.strip() for origin in v.split(",") if origin.strip()]
-        return v
+        v = self.allowed_origins.strip()
+        if v.startswith("["):
+            import json
+            return json.loads(v)
+        return [origin.strip() for origin in v.split(",") if origin.strip()]
 
     @property
     def is_production(self) -> bool:
