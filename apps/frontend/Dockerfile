@@ -36,16 +36,14 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+# Copy full node_modules and built app
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=builder /app/apps/frontend ./apps/frontend
+COPY --from=builder /app/package.json ./package.json
 
-COPY --from=builder /app/apps/frontend/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/apps/frontend/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/apps/frontend/.next/static ./apps/frontend/.next/static
-
-USER nextjs
 EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-CMD ["sh", "-c", "find . -name server.js -maxdepth 3 && exec node $(find . -name server.js -maxdepth 3 | head -1)"]
+WORKDIR /app/apps/frontend
+CMD ["npx", "next", "start", "-p", "3000"]
